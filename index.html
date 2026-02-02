@@ -572,8 +572,8 @@
                     if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
                     
                     // Apply rotation to particle system
-                    // Negative because we want clockwise hand rotation to rotate object clockwise
-                    particleSystem.rotation.y -= angleDiff * ROTATION_SENSITIVITY;
+                    // Positive to match hand rotation direction
+                    particleSystem.rotation.y += angleDiff * ROTATION_SENSITIVITY;
                 }
                 
                 // Store current angle for next frame
