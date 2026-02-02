@@ -532,6 +532,10 @@
         let okGestureStartTime = 0;
         const OK_HOLD_TIME = 1500; // 1.5s
         let isHoldingOk = false;
+        
+        // Hand rotation tracking
+        let previousHandAngle = null;
+        const ROTATION_SENSITIVITY = 2.0; // Multiplier for rotation speed
 
         function onResults(results) {
             canvasCtx.save();
@@ -549,13 +553,31 @@
 
                 // --- Interaction Logic ---
 
-                // 1. Rotation (Palm center x)
-                // Landmarks 0 (wrist) and 9 (middle finger mcp) avg
-                const palmX = landmarks[0].x; // 0-1, left to right (mirrored view)
-                // Map 0-1 to -PI to PI
-                const targetRotation = (palmX - 0.5) * 4.0;
-                // Smoothly update rotation
-                particleSystem.rotation.y += (targetRotation - particleSystem.rotation.y) * 0.05;
+                // 1. Rotation (Hand Rotation Gesture Detection)
+                // Calculate hand rotation angle using wrist (0) to middle finger MCP (9)
+                const wrist = landmarks[0];
+                const middleMCP = landmarks[9]; // Middle finger base knuckle
+                
+                // Calculate angle of the hand (in radians)
+                const deltaX = middleMCP.x - wrist.x;
+                const deltaY = middleMCP.y - wrist.y;
+                const currentHandAngle = Math.atan2(deltaY, deltaX);
+                
+                if (previousHandAngle !== null) {
+                    // Calculate angle difference
+                    let angleDiff = currentHandAngle - previousHandAngle;
+                    
+                    // Normalize angle difference to -PI to PI range
+                    if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                    if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                    
+                    // Apply rotation to particle system
+                    // Negative because we want clockwise hand rotation to rotate object clockwise
+                    particleSystem.rotation.y -= angleDiff * ROTATION_SENSITIVITY;
+                }
+                
+                // Store current angle for next frame
+                previousHandAngle = currentHandAngle;
 
                 // 2. Pinch to Scale (Thumb Tip 4, Index Tip 8)
                 const thumbTip = landmarks[4];
@@ -578,14 +600,14 @@
                 const middleTip = landmarks[12];
                 const ringTip = landmarks[16];
                 const pinkyTip = landmarks[20];
-                const wrist = landmarks[0];
+                const wristForOK = landmarks[0];
 
                 const isPinch = distance < 0.08;
-                const isExtended = (y) => wrist.y - y > 0.1; // Simple check: tips above wrist significantly
+                const isExtended = (y) => wristForOK.y - y > 0.1; // Simple check: tips above wrist significantly
 
                 // In canvas coords, y is 0 at top. Higher hand = lower y value.
                 // Distance from wrist to tip
-                const distWristMiddle = Math.sqrt(Math.pow(wrist.x - middleTip.x, 2) + Math.pow(wrist.y - middleTip.y, 2));
+                const distWristMiddle = Math.sqrt(Math.pow(wristForOK.x - middleTip.x, 2) + Math.pow(wristForOK.y - middleTip.y, 2));
 
                 if (isPinch && distWristMiddle > 0.15) {
                     detectedGesture = "OK DETECTED";
@@ -612,6 +634,8 @@
             } else {
                 // Auto rotate if no hand
                 particleSystem.rotation.y += 0.002;
+                // Reset hand angle tracking
+                previousHandAngle = null;
             }
 
             gestureLabel.innerText = detectedGesture;
