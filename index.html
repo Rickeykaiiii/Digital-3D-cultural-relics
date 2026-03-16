@@ -261,8 +261,14 @@
     <!-- Loading Screen -->
     <div id="loading-overlay" class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center text-center">
         <div class="w-16 h-16 border-4 border-cyan-900 border-t-yellow-500 rounded-full animate-spin mb-4"></div>
-        <h2 class="text-xl text-cyan-500 tracking-widest tech-font">INITIALIZING SYSTEM</h2>
-        <p class="text-sm text-slate-500 mt-2">Connecting to Neural Interface...</p>
+        <h2 id="loading-title" class="text-xl text-cyan-500 tracking-widest tech-font">INITIALIZING SYSTEM</h2>
+        <p id="loading-text" class="text-sm text-slate-500 mt-2">Connecting to Neural Interface...</p>
+        <div id="loading-progress" class="hidden mt-4 w-64">
+            <div class="h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div id="progress-bar" class="h-full bg-cyan-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="progress-text" class="text-xs text-slate-600 mt-2">0%</p>
+        </div>
     </div>
 
     <!-- Scripts -->
@@ -515,6 +521,62 @@
         // --- Logic: OBJ Loading ---
         const objLoader = new OBJLoader();
         const objInput = document.getElementById('obj-input');
+
+        async function loadOBJWithProgress(url, filename) {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const loadingTitle = document.getElementById('loading-title');
+            const loadingText = document.getElementById('loading-text');
+            const loadingProgress = document.getElementById('loading-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+
+            loadingOverlay.style.display = 'flex';
+            loadingOverlay.style.opacity = '1';
+            loadingTitle.innerText = 'LOADING MODEL';
+            loadingText.innerText = `Downloading ${filename}...`;
+            loadingProgress.classList.remove('hidden');
+
+            const response = await fetch(url);
+            const reader = response.body.getReader();
+            const contentLength = +response.headers.get('Content-Length');
+            let receivedLength = 0;
+            let chunks = [];
+
+            while(true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                receivedLength += value.length;
+                const progress = Math.round((receivedLength / contentLength) * 100);
+                progressBar.style.width = progress + '%';
+                progressText.innerText = progress + '%';
+            }
+
+            const blob = new Blob(chunks);
+            const text = await blob.text();
+
+            loadingTitle.innerText = 'PARSING MODEL';
+            loadingText.innerText = 'Processing geometry...';
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const object = objLoader.parse(text);
+            let mesh = null;
+            object.traverse(child => {
+                if (child.isMesh) mesh = child;
+            });
+
+            if (mesh) {
+                processMeshToParticles(mesh);
+                updateAIDescription(filename);
+            }
+
+            loadingOverlay.style.opacity = '0';
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+                loadingProgress.classList.add('hidden');
+                progressBar.style.width = '0%';
+            }, 500);
+        }
 
         objInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -889,21 +951,8 @@
         }
 
         function triggerGoodAction() {
-            // Visual feedback
-            material.uniforms.uMorphFactor.value = 0.5; // Brief flash to chaos
-
-            // Load standing-man.obj
-            fetch('assets/objs/standing-man.obj')
-                .then(r => r.text())
-                .then(text => {
-                    const object = objLoader.parse(text);
-                    object.traverse(child => {
-                        if (child.isMesh) {
-                            processMeshToParticles(child);
-                            updateAIDescription('standing-man.obj');
-                        }
-                    });
-                })
+            material.uniforms.uMorphFactor.value = 0.5;
+            loadOBJWithProgress('assets/objs/standing-man.obj', 'standing-man.obj')
                 .catch(err => {
                     console.error('Failed to load standing-man.obj:', err);
                     updateAIDescription("深度扫描 - 重新校准");
@@ -964,20 +1013,11 @@
         setTimeout(() => {
             document.getElementById('loading-overlay').style.opacity = '0';
             setTimeout(() => {
-                document.getElementById('loading-overlay').style.display = 'none';
-                // Auto-load mask.obj as default model
-                fetch('assets/objs/standing-man.obj')
-                    .then(r => r.text())
-                    .then(text => {
-                        const object = objLoader.parse(text);
-                        object.traverse(child => {
-                            if (child.isMesh) {
-                                processMeshToParticles(child);
-                                updateAIDescription('standing-man.obj');
-                            }
-                        });
-                    })
-                    .catch(() => generateTorusKnotPoints()); // fallback if file missing
+                loadOBJWithProgress('assets/objs/standing-man.obj', 'standing-man.obj')
+                    .catch(() => {
+                        document.getElementById('loading-overlay').style.display = 'none';
+                        generateTorusKnotPoints();
+                    });
                 // Show gesture guide after loading
                 const overlay = document.getElementById('gesture-guide-overlay');
                 overlay.style.opacity = '0';
