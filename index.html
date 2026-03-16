@@ -261,6 +261,7 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+        import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
         import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -530,7 +531,7 @@
             reader.readAsText(file);
         });
 
-        function processMeshToParticles(mesh) {
+        function processMeshToParticles(mesh, useMaterial = null) {
             // Reset Morph to 0 (Chaos) briefly
             material.uniforms.uMorphFactor.value = 0;
 
@@ -549,7 +550,7 @@
             // Build solid mesh from normalized geometry (for OK gesture toggle)
             if (solidMesh) scene.remove(solidMesh);
             mesh.geometry.computeVertexNormals();
-            const solidMat = new THREE.MeshStandardMaterial({
+            const solidMat = useMaterial || new THREE.MeshStandardMaterial({
                 color: new THREE.Color('#b5854a'),
                 metalness: 0.75,
                 roughness: 0.25,
@@ -945,19 +946,38 @@
             document.getElementById('loading-overlay').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('loading-overlay').style.display = 'none';
-                // Auto-load standing-man.obj as default model
-                fetch('assets/objs/standing-man.obj')
-                    .then(r => r.text())
-                    .then(text => {
-                        const object = objLoader.parse(text);
-                        object.traverse(child => {
-                            if (child.isMesh) {
-                                processMeshToParticles(child);
-                                updateAIDescription('standing-man.obj');
-                            }
+                // Auto-load standing-man.obj with MTL materials
+                const mtlLoader = new MTLLoader();
+                mtlLoader.setPath('assets/texture/standing-man/');
+                mtlLoader.load('material.mtl', (materials) => {
+                    materials.preload();
+                    objLoader.setMaterials(materials);
+                    fetch('assets/objs/standing-man.obj')
+                        .then(r => r.text())
+                        .then(text => {
+                            const object = objLoader.parse(text);
+                            object.traverse(child => {
+                                if (child.isMesh) {
+                                    processMeshToParticles(child, child.material);
+                                    updateAIDescription('standing-man.obj');
+                                }
+                            });
                         });
-                    })
-                    .catch(() => generateTorusKnotPoints()); // fallback if file missing
+                }, undefined, () => {
+                    // MTL load failed, fallback to OBJ only
+                    fetch('assets/objs/standing-man.obj')
+                        .then(r => r.text())
+                        .then(text => {
+                            const object = objLoader.parse(text);
+                            object.traverse(child => {
+                                if (child.isMesh) {
+                                    processMeshToParticles(child);
+                                    updateAIDescription('standing-man.obj');
+                                }
+                            });
+                        })
+                        .catch(() => generateTorusKnotPoints());
+                });
                 // Show gesture guide after loading
                 const overlay = document.getElementById('gesture-guide-overlay');
                 overlay.style.opacity = '0';
