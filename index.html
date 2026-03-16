@@ -475,6 +475,16 @@
         const particleSystem = new THREE.Points(geometry, material);
         scene.add(particleSystem);
 
+        // Lights for solid mesh mode (no effect on particle shader)
+        const ambientLight = new THREE.AmbientLight(0x334455, 1.5);
+        scene.add(ambientLight);
+        const keyLight = new THREE.DirectionalLight(0xffd090, 3.0);
+        keyLight.position.set(1, 1.5, 1);
+        scene.add(keyLight);
+        const fillLight = new THREE.DirectionalLight(0x06b6d4, 1.0);
+        fillLight.position.set(-1, 0.5, -0.5);
+        scene.add(fillLight);
+
         // --- Logic: Load Default Shape ---
         function generateTorusKnotPoints() {
             const tempGeo = new THREE.TorusKnotGeometry(20, 6, 150, 20);
@@ -535,6 +545,20 @@
             const maxDim = Math.max(size.x, size.y, size.z);
             const scaleFactor = 40.0 / maxDim;
             mesh.geometry.scale(scaleFactor, scaleFactor, scaleFactor);
+
+            // Build solid mesh from normalized geometry (for OK gesture toggle)
+            if (solidMesh) scene.remove(solidMesh);
+            mesh.geometry.computeVertexNormals();
+            const solidMat = new THREE.MeshStandardMaterial({
+                color: new THREE.Color('#b5854a'),
+                metalness: 0.75,
+                roughness: 0.25,
+                emissive: new THREE.Color('#3d2a10'),
+                emissiveIntensity: 0.3,
+            });
+            solidMesh = new THREE.Mesh(mesh.geometry.clone(), solidMat);
+            solidMesh.visible = false;
+            scene.add(solidMesh);
 
             // 2. Sample Points
             const sampler = new MeshSurfaceSampler(mesh).build();
@@ -619,6 +643,13 @@
         let prevHandAngle = null;    // 單手旋轉：捏合放開後重置為 null
         let prevPinchSpan = null;    // 雙手縮放：切換至單手後重置為 null
 
+        // OK gesture state
+        let isHoldingOK = false;
+        let okGestureStartTime = 0;
+        const OK_HOLD_TIME = 2000;
+        let isParticleMode = true;
+        let solidMesh = null;
+
         // --- Gesture Helper Functions ---
 
         function detectPinch(landmarks) {
@@ -652,6 +683,7 @@
                 // Dead zone：過濾 MediaPipe 追蹤抖動，靜止時不漂移
                 if (Math.abs(delta) > 0.015) {
                     particleSystem.rotation.y += delta * CONFIG.gesture.ROTATION_SENSITIVITY;
+                    if (solidMesh) solidMesh.rotation.y = particleSystem.rotation.y;
                 }
             }
             prevHandAngle = currentAngle;
@@ -660,6 +692,54 @@
         function autoRotate() {
             // 僅負責旋轉，狀態重置由 onResults 管理
             particleSystem.rotation.y += 0.002;
+            if (solidMesh) solidMesh.rotation.y += 0.002;
+        }
+
+        function detectOKFingers(landmarks) {
+            // OK 手勢：拇指+食指捏合（已由 detectPinch 判定），中指/無名指/小指伸直
+            const middle    = landmarks[12];
+            const ring      = landmarks[16];
+            const pinky     = landmarks[20];
+            const middleMCP = landmarks[9];
+            const ringMCP   = landmarks[13];
+            const pinkyMCP  = landmarks[17];
+            return (
+                middle.y < middleMCP.y - 0.05 &&
+                ring.y   < ringMCP.y   - 0.05 &&
+                pinky.y  < pinkyMCP.y  - 0.05
+            );
+        }
+
+        function toggleRenderMode() {
+            if (!solidMesh) return;
+            isParticleMode = !isParticleMode;
+            if (isParticleMode) {
+                particleSystem.visible = true;
+                solidMesh.visible = false;
+            } else {
+                // 同步 solidMesh 旋轉角度
+                solidMesh.rotation.copy(particleSystem.rotation);
+                particleSystem.visible = false;
+                solidMesh.visible = true;
+            }
+        }
+
+        function handleOKGesture() {
+            gestureLabel.innerText = 'OK DETECTED';
+            if (!isHoldingOK) {
+                isHoldingOK = true;
+                okGestureStartTime = performance.now();
+            } else {
+                const elapsed  = performance.now() - okGestureStartTime;
+                const progress = Math.min(elapsed / OK_HOLD_TIME, 1);
+                progressRing.style.strokeDashoffset = circumference - progress * circumference;
+                if (elapsed >= OK_HOLD_TIME) {
+                    toggleRenderMode();
+                    isHoldingOK = false;
+                    progressRing.style.strokeDashoffset = circumference;
+                    gestureLabel.innerText = isParticleMode ? 'PARTICLE MODE' : 'MESH MODE';
+                }
+            }
         }
 
         function detectThumbsUp(landmarks) {
@@ -706,22 +786,25 @@
 
         function handleSingleHand(landmarks) {
             const { isPinching } = detectPinch(landmarks);
+            const isOK = isPinching && detectOKFingers(landmarks);
 
-            // Debug: 顯示即時 pinch distance（確認手勢有效後可移除）
-            const thumb = landmarks[4], idx = landmarks[8];
-            const debugDist = Math.sqrt(Math.pow(thumb.x - idx.x, 2) + Math.pow(thumb.y - idx.y, 2));
-            gestureLabel.innerText = isPinching
-                ? `PINCH ROTATE (${debugDist.toFixed(3)})`
-                : `dist:${debugDist.toFixed(3)} thr:${CONFIG.gesture.PINCH_THRESHOLD}`;
-
-            if (isPinching) {
-                applyRotation(landmarks);
-                // 捏合中禁用 👍，避免誤觸發
-                // （goodGestureStartTime 無需另外重置，isHoldingGood = false 已足夠）
+            if (isOK) {
+                // OK 手勢：鎖定 2s 切換渲染模式
+                prevHandAngle = null;
                 isHoldingGood = false;
                 progressRing.style.strokeDashoffset = circumference;
+                handleOKGesture();
+            } else if (isPinching) {
+                // 普通捏合：旋轉
+                applyRotation(landmarks);
+                isHoldingOK = false;
+                isHoldingGood = false;
+                progressRing.style.strokeDashoffset = circumference;
+                gestureLabel.innerText = 'PINCH ROTATE';
             } else {
-                prevHandAngle = null; // 放開捏合，重置角度記錄防止下次捏住時跳轉
+                // 未捏合：👍 偵測
+                prevHandAngle = null;
+                isHoldingOK = false;
                 detectThumbsUp(landmarks);
             }
         }
@@ -753,8 +836,7 @@
             }
 
             prevPinchSpan = currentSpan;
-            // Debug: 顯示即時 span 值，確認後可移除
-            gestureLabel.innerText = `TWO HANDS span:${currentSpan.toFixed(3)} scale:${material.uniforms.uScale.value.toFixed(2)}`;
+            gestureLabel.innerText = 'TWO HANDS SCALE';
         }
 
         function onResults(results) {
@@ -773,6 +855,7 @@
 
                 handleTwoHands(allLandmarks[0], allLandmarks[1]);
                 prevHandAngle = null;           // 切換至雙手，重置單手旋轉狀態
+                isHoldingOK = false;
                 controls.autoRotate = false;
 
             } else if (allLandmarks.length === 1) {
@@ -790,6 +873,7 @@
                 prevHandAngle = null;
                 prevPinchSpan = null;
                 isHoldingGood = false;
+                isHoldingOK = false;
                 progressRing.style.strokeDashoffset = circumference;
                 gestureLabel.innerText = 'DETECTING...';
                 controls.autoRotate = true;
