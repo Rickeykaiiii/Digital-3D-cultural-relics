@@ -204,7 +204,7 @@
             },
             cameraZ: 150,
             gesture: {
-                PINCH_THRESHOLD: 0.07,      // normalized，拇指食指捏合判定距離
+                PINCH_THRESHOLD: 0.12,      // normalized，拇指食指捏合判定距離（0.12 = 自然舒適捏合）
                 ROTATION_SENSITIVITY: 2.5,  // 旋轉倍率
                 SCALE_SENSITIVITY: 2.0,     // 雙手縮放倍率（delta-based）
                 SCALE_DEAD_ZONE: 0.008,     // 最小有效間距變化量，過濾追蹤抖動
@@ -630,13 +630,19 @@
         function handleSingleHand(landmarks) {
             const { isPinching } = detectPinch(landmarks);
 
+            // Debug: 顯示即時 pinch distance（確認手勢有效後可移除）
+            const thumb = landmarks[4], idx = landmarks[8];
+            const debugDist = Math.sqrt(Math.pow(thumb.x - idx.x, 2) + Math.pow(thumb.y - idx.y, 2));
+            gestureLabel.innerText = isPinching
+                ? `PINCH ROTATE (${debugDist.toFixed(3)})`
+                : `dist:${debugDist.toFixed(3)} thr:${CONFIG.gesture.PINCH_THRESHOLD}`;
+
             if (isPinching) {
                 applyRotation(landmarks);
                 // 捏合中禁用 👍，避免誤觸發
                 // （goodGestureStartTime 無需另外重置，isHoldingGood = false 已足夠）
                 isHoldingGood = false;
                 progressRing.style.strokeDashoffset = circumference;
-                gestureLabel.innerText = 'PINCH ROTATE';
             } else {
                 prevHandAngle = null; // 放開捏合，重置角度記錄防止下次捏住時跳轉
                 detectThumbsUp(landmarks);
