@@ -289,15 +289,49 @@
         };
 
         // --- Gemini API Setup ---
-        async function getArtifactDescription(filename) {
+        async function getArtifactDescription(modelName) {
             try {
-                const response = await fetch('assets/introduction/standing-man.md');
+                const response = await fetch(`assets/introduction/${modelName}.md`);
                 const text = await response.text();
                 return text.trim();
             } catch (error) {
                 console.error("Failed to load description:", error);
                 return "数据连接中断。无法检索古蜀文明数据库。";
             }
+        }
+
+        function loadModel(modelName) {
+            const mtlLoader = new MTLLoader();
+            mtlLoader.setPath(`assets/texture/${modelName}/`);
+            mtlLoader.load('material.mtl', (materials) => {
+                materials.preload();
+                objLoader.setMaterials(materials);
+                fetch(`assets/objs/${modelName}.obj`)
+                    .then(r => r.text())
+                    .then(text => {
+                        const object = objLoader.parse(text);
+                        object.traverse(child => {
+                            if (child.isMesh) {
+                                processMeshToParticles(child, child.material);
+                                updateAIDescription(modelName);
+                            }
+                        });
+                    });
+            }, undefined, () => {
+                // MTL load failed, fallback to OBJ only
+                fetch(`assets/objs/${modelName}.obj`)
+                    .then(r => r.text())
+                    .then(text => {
+                        const object = objLoader.parse(text);
+                        object.traverse(child => {
+                            if (child.isMesh) {
+                                processMeshToParticles(child);
+                                updateAIDescription(modelName);
+                            }
+                        });
+                    })
+                    .catch(() => generateTorusKnotPoints());
+            });
         }
 
         // --- Three.js Setup ---
@@ -631,6 +665,10 @@
         let isHoldingOK = false;
         let okGestureStartTime = 0;
         const OK_HOLD_TIME = 2000;
+
+        // Model switching state
+        let currentModel = 'standing-man';
+        const models = ['standing-man', 'golden-mask'];
         let isParticleMode = true;
         let solidMesh = null;
 
@@ -872,14 +910,16 @@
         }
 
         function triggerGoodAction() {
-            // Visual feedback
-            material.uniforms.uMorphFactor.value = 0.5; // Brief flash to chaos
-            setTimeout(() => {
-                animateMorph(1.0);
-            }, 300);
+            // Switch to next model
+            const currentIndex = models.indexOf(currentModel);
+            const nextIndex = (currentIndex + 1) % models.length;
+            currentModel = models[nextIndex];
 
-            // Re-generate description for current item as a "Refined Scan"
-            updateAIDescription("深度扫描 - 重新校准");
+            // Visual feedback: morph to chaos then load new model
+            material.uniforms.uMorphFactor.value = 0.5;
+            setTimeout(() => {
+                loadModel(currentModel);
+            }, 300);
         }
 
         const hands = new Hands({
@@ -937,38 +977,8 @@
             document.getElementById('loading-overlay').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('loading-overlay').style.display = 'none';
-                // Auto-load standing-man.obj with MTL materials
-                const mtlLoader = new MTLLoader();
-                mtlLoader.setPath('assets/texture/standing-man/');
-                mtlLoader.load('material.mtl', (materials) => {
-                    materials.preload();
-                    objLoader.setMaterials(materials);
-                    fetch('assets/objs/standing-man.obj')
-                        .then(r => r.text())
-                        .then(text => {
-                            const object = objLoader.parse(text);
-                            object.traverse(child => {
-                                if (child.isMesh) {
-                                    processMeshToParticles(child, child.material);
-                                    updateAIDescription('standing-man.obj');
-                                }
-                            });
-                        });
-                }, undefined, () => {
-                    // MTL load failed, fallback to OBJ only
-                    fetch('assets/objs/standing-man.obj')
-                        .then(r => r.text())
-                        .then(text => {
-                            const object = objLoader.parse(text);
-                            object.traverse(child => {
-                                if (child.isMesh) {
-                                    processMeshToParticles(child);
-                                    updateAIDescription('standing-man.obj');
-                                }
-                            });
-                        })
-                        .catch(() => generateTorusKnotPoints());
-                });
+                // Auto-load default model
+                loadModel(currentModel);
                 // Show gesture guide after loading
                 const overlay = document.getElementById('gesture-guide-overlay');
                 overlay.style.opacity = '0';
