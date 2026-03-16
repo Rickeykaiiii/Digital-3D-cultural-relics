@@ -557,12 +557,12 @@
             // Build solid mesh from normalized geometry (for OK gesture toggle)
             if (solidMesh) scene.remove(solidMesh);
             mesh.geometry.computeVertexNormals();
-            const solidMat = new THREE.MeshStandardMaterial({
-                color: new THREE.Color('#d4a574'),  // 更亮的青銅色
+            const solidMat = useMaterial || new THREE.MeshStandardMaterial({
+                color: new THREE.Color('#b5854a'),
                 metalness: 0.75,
                 roughness: 0.25,
-                emissive: new THREE.Color('#8b6f47'),  // 更亮的自發光
-                emissiveIntensity: 0.8,  // 提升自發光強度
+                emissive: new THREE.Color('#3d2a10'),
+                emissiveIntensity: 0.3,
             });
             solidMesh = new THREE.Mesh(mesh.geometry.clone(), solidMat);
             solidMesh.visible = false;
@@ -968,19 +968,21 @@
                 // Auto-load standing-man.obj with MTL materials
                 const mtlLoader = new MTLLoader();
                 mtlLoader.setPath('assets/texture/standing-man/');
-                // 直接加載 OBJ，使用代碼定義的青銅材質
-                fetch('assets/objs/standing-man.obj')
-                    .then(r => r.text())
-                    .then(text => {
-                        const object = objLoader.parse(text);
-                        object.traverse(child => {
-                            if (child.isMesh) {
-                                processMeshToParticles(child);
-                                updateAIDescription('standing-man.obj');
-                            }
+                mtlLoader.load('material.mtl', (materials) => {
+                    materials.preload();
+                    objLoader.setMaterials(materials);
+                    fetch('assets/objs/standing-man.obj')
+                        .then(r => r.text())
+                        .then(text => {
+                            const object = objLoader.parse(text);
+                            object.traverse(child => {
+                                if (child.isMesh) {
+                                    processMeshToParticles(child, child.material);
+                                    updateAIDescription('standing-man.obj');
+                                }
+                            });
                         });
-                    })
-                    .catch(() => {
+                }, undefined, () => {
                     // MTL load failed, fallback to OBJ only
                     fetch('assets/objs/standing-man.obj')
                         .then(r => r.text())
