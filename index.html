@@ -557,19 +557,13 @@
             // Build solid mesh from normalized geometry (for OK gesture toggle)
             if (solidMesh) scene.remove(solidMesh);
             mesh.geometry.computeVertexNormals();
-            const solidMat = useMaterial || new THREE.MeshStandardMaterial({
-                color: new THREE.Color('#b5854a'),
+            const solidMat = new THREE.MeshStandardMaterial({
+                color: new THREE.Color('#d4a574'),  // 更亮的青銅色
                 metalness: 0.75,
                 roughness: 0.25,
-                emissive: new THREE.Color('#3d2a10'),
-                emissiveIntensity: 0.3,
+                emissive: new THREE.Color('#8b6f47'),  // 更亮的自發光
+                emissiveIntensity: 0.8,  // 提升自發光強度
             });
-            // 如果使用 MTL 材質，增強其亮度和自發光
-            if (useMaterial) {
-                solidMat.emissive = new THREE.Color('#4a3520');
-                solidMat.emissiveIntensity = 0.6;
-                solidMat.color.multiplyScalar(1.5); // 增亮漫反射顏色
-            }
             solidMesh = new THREE.Mesh(mesh.geometry.clone(), solidMat);
             solidMesh.visible = false;
             scene.add(solidMesh);
@@ -974,21 +968,19 @@
                 // Auto-load standing-man.obj with MTL materials
                 const mtlLoader = new MTLLoader();
                 mtlLoader.setPath('assets/texture/standing-man/');
-                mtlLoader.load('material.mtl', (materials) => {
-                    materials.preload();
-                    objLoader.setMaterials(materials);
-                    fetch('assets/objs/standing-man.obj')
-                        .then(r => r.text())
-                        .then(text => {
-                            const object = objLoader.parse(text);
-                            object.traverse(child => {
-                                if (child.isMesh) {
-                                    processMeshToParticles(child, child.material);
-                                    updateAIDescription('standing-man.obj');
-                                }
-                            });
+                // 直接加載 OBJ，使用代碼定義的青銅材質
+                fetch('assets/objs/standing-man.obj')
+                    .then(r => r.text())
+                    .then(text => {
+                        const object = objLoader.parse(text);
+                        object.traverse(child => {
+                            if (child.isMesh) {
+                                processMeshToParticles(child);
+                                updateAIDescription('standing-man.obj');
+                            }
                         });
-                }, undefined, () => {
+                    })
+                    .catch(() => {
                     // MTL load failed, fallback to OBJ only
                     fetch('assets/objs/standing-man.obj')
                         .then(r => r.text())
