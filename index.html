@@ -1009,22 +1009,20 @@
         }
 
         // --- Init ---
-        // Hide loading screen after 1.5s, then show gesture guide
+        // Load model after 1.5s, then show gesture guide
         setTimeout(() => {
-            document.getElementById('loading-overlay').style.opacity = '0';
-            setTimeout(() => {
-                loadOBJWithProgress('assets/objs/standing-man.obj', 'standing-man.obj')
-                    .catch(() => {
-                        document.getElementById('loading-overlay').style.display = 'none';
-                        generateTorusKnotPoints();
-                    });
-                // Show gesture guide after loading
-                const overlay = document.getElementById('gesture-guide-overlay');
-                overlay.style.opacity = '0';
-                overlay.style.transition = 'opacity 0.5s ease';
-                overlay.style.display = 'flex';
-                requestAnimationFrame(() => { overlay.style.opacity = '1'; });
-            }, 500);
+            loadOBJWithProgress('assets/objs/standing-man.obj', 'standing-man.obj')
+                .then(() => {
+                    // Show gesture guide after loading
+                    const overlay = document.getElementById('gesture-guide-overlay');
+                    overlay.style.opacity = '0';
+                    overlay.style.transition = 'opacity 0.5s ease';
+                    overlay.style.display = 'flex';
+                    requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+                })
+                .catch(() => {
+                    generateTorusKnotPoints();
+                });
         }, 1500);
 
         // Gesture Guide open/close logic
