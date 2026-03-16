@@ -540,10 +540,50 @@
         let goodGestureStartTime = 0;
         const GOOD_HOLD_TIME = 1500; // 1.5s
         let isHoldingGood = false;
-        
+
         // Hand rotation tracking
         let previousHandAngle = null;
         const ROTATION_SENSITIVITY = 2.0; // Multiplier for rotation speed
+
+        // --- Gesture Helper Functions ---
+
+        function detectPinch(landmarks) {
+            const thumb = landmarks[4];
+            const index = landmarks[8];
+            const dist = Math.sqrt(
+                Math.pow(thumb.x - index.x, 2) +
+                Math.pow(thumb.y - index.y, 2)
+            );
+            return {
+                isPinching: dist < CONFIG.gesture.PINCH_THRESHOLD,
+                pinchCenter: {
+                    x: (thumb.x + index.x) / 2,
+                    y: (thumb.y + index.y) / 2
+                }
+            };
+        }
+
+        function applyRotation(landmarks) {
+            const wrist = landmarks[0];
+            const middleMCP = landmarks[9];
+            const currentAngle = Math.atan2(
+                middleMCP.y - wrist.y,
+                middleMCP.x - wrist.x
+            );
+
+            if (prevHandAngle !== null) {
+                let delta = currentAngle - prevHandAngle;
+                if (delta > Math.PI)  delta -= 2 * Math.PI;
+                if (delta < -Math.PI) delta += 2 * Math.PI;
+                particleSystem.rotation.y += delta * CONFIG.gesture.ROTATION_SENSITIVITY;
+            }
+            prevHandAngle = currentAngle;
+        }
+
+        function autoRotate() {
+            // 僅負責旋轉，狀態重置由 onResults 管理
+            particleSystem.rotation.y += 0.002;
+        }
 
         function onResults(results) {
             canvasCtx.save();
