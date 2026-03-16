@@ -658,7 +658,7 @@
         let isHoldingGood = false;
 
         // Gesture state
-        let prevHandAngle = null;    // 單手旋轉：捏合放開後重置為 null
+        let prevHandOpenness = null; // 單手縮放：手掌張開程度
         let prevPinchSpan = null;    // 雙手縮放：切換至單手後重置為 null
 
         // OK gesture state
@@ -690,25 +690,40 @@
             };
         }
 
-        function applyRotation(landmarks) {
+        function calculateHandOpenness(landmarks) {
+            // 計算手指尖到手腕的平均距離，反映手掌張開程度
             const wrist = landmarks[0];
-            const middleMCP = landmarks[9];
-            const currentAngle = Math.atan2(
-                middleMCP.y - wrist.y,
-                middleMCP.x - wrist.x
-            );
+            const fingerTips = [4, 8, 12, 16, 20]; // 拇指、食指、中指、無名指、小指尖
+            let totalDist = 0;
 
-            if (prevHandAngle !== null) {
-                let delta = currentAngle - prevHandAngle;
-                if (delta > Math.PI)  delta -= 2 * Math.PI;
-                if (delta < -Math.PI) delta += 2 * Math.PI;
-                // Dead zone：過濾 MediaPipe 追蹤抖動，靜止時不漂移
-                if (Math.abs(delta) > 0.015) {
-                    particleSystem.rotation.y += delta * CONFIG.gesture.ROTATION_SENSITIVITY;
-                    if (solidMesh) solidMesh.rotation.y = particleSystem.rotation.y;
+            for (const tipIdx of fingerTips) {
+                const tip = landmarks[tipIdx];
+                const dist = Math.sqrt(
+                    Math.pow(tip.x - wrist.x, 2) +
+                    Math.pow(tip.y - wrist.y, 2)
+                );
+                totalDist += dist;
+            }
+
+            return totalDist / fingerTips.length;
+        }
+
+        function applySingleHandScale(landmarks) {
+            const currentOpenness = calculateHandOpenness(landmarks);
+
+            if (prevHandOpenness !== null) {
+                const delta = currentOpenness - prevHandOpenness;
+
+                if (Math.abs(delta) > 0.002) { // Dead zone
+                    const newScale = Math.max(CONFIG.gesture.SCALE_MIN, Math.min(CONFIG.gesture.SCALE_MAX,
+                        material.uniforms.uScale.value + delta * 8.0 // 單手縮放靈敏度
+                    ));
+                    material.uniforms.uScale.value = newScale;
+                    if (solidMesh) solidMesh.scale.setScalar(newScale);
                 }
             }
-            prevHandAngle = currentAngle;
+
+            prevHandOpenness = currentOpenness;
         }
 
         function autoRotate() {
@@ -820,14 +835,14 @@
 
             if (isOK) {
                 // OK 手勢：鎖定 2s 切換渲染模式
-                prevHandAngle = null;
+                prevHandOpenness = null;
                 isHoldingGood = false;
                 progressRing.style.strokeDashoffset = circumference;
                 handleOKGesture();
             } else {
-                // 手掌旋轉：直接用手腕角度，無需捏合
+                // 單手縮放：根據手掌張開程度
                 isHoldingOK = false;
-                applyRotation(landmarks);
+                applySingleHandScale(landmarks);
                 detectThumbsUp(landmarks);
             }
         }
@@ -881,7 +896,7 @@
                 drawLandmarks(canvasCtx, allLandmarks[1], { color: '#fbbf24', lineWidth: 1, radius: 3 });
 
                 handleTwoHands(allLandmarks[0], allLandmarks[1]);
-                prevHandAngle = null;           // 切換至雙手，重置單手旋轉狀態
+                prevHandOpenness = null;        // 切換至雙手，重置單手縮放狀態
                 isHoldingOK = false;
                 controls.autoRotate = false;
 
@@ -897,7 +912,7 @@
             } else {
                 // 無手：自動旋轉，重置所有狀態
                 autoRotate();
-                prevHandAngle = null;
+                prevHandOpenness = null;
                 prevPinchSpan = null;
                 isHoldingGood = false;
                 isHoldingOK = false;
