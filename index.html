@@ -861,7 +861,19 @@
             document.getElementById('loading-overlay').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('loading-overlay').style.display = 'none';
-                generateTorusKnotPoints(); // Start with default
+                // Auto-load mask.obj as default model
+                fetch('models/mask.obj')
+                    .then(r => r.text())
+                    .then(text => {
+                        const object = objLoader.parse(text);
+                        object.traverse(child => {
+                            if (child.isMesh) {
+                                processMeshToParticles(child);
+                                updateAIDescription('mask.obj');
+                            }
+                        });
+                    })
+                    .catch(() => generateTorusKnotPoints()); // fallback if file missing
                 // Show gesture guide after loading
                 const overlay = document.getElementById('gesture-guide-overlay');
                 overlay.style.opacity = '0';
