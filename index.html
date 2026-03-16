@@ -585,6 +585,96 @@
             particleSystem.rotation.y += 0.002;
         }
 
+        function detectThumbsUp(landmarks) {
+            const thumbTip  = landmarks[4];
+            const thumbMCP  = landmarks[2];
+            const indexTip  = landmarks[8];
+            const indexMCP  = landmarks[5];
+            const middleTip = landmarks[12];
+            const ringTip   = landmarks[16];
+            const pinkyTip  = landmarks[20];
+            const wrist     = landmarks[0];
+
+            const thumbExtended = thumbTip.y < thumbMCP.y - 0.1;
+            const indexCurled   = Math.abs(indexTip.y - indexMCP.y) < 0.15;
+            const middleCurled  = middleTip.y > wrist.y - 0.1;
+            const ringCurled    = ringTip.y   > wrist.y - 0.1;
+            const pinkyCurled   = pinkyTip.y  > wrist.y - 0.1;
+
+            const isThumbsUp = thumbExtended && indexCurled && middleCurled && ringCurled && pinkyCurled;
+
+            if (isThumbsUp) {
+                gestureLabel.innerText = 'GOOD DETECTED';
+                if (!isHoldingGood) {
+                    isHoldingGood = true;
+                    goodGestureStartTime = performance.now();
+                } else {
+                    const elapsed  = performance.now() - goodGestureStartTime;
+                    const progress = Math.min(elapsed / GOOD_HOLD_TIME, 1);
+                    const offset   = circumference - progress * circumference;
+                    progressRing.style.strokeDashoffset = offset;
+
+                    if (elapsed >= GOOD_HOLD_TIME) {
+                        gestureLabel.innerText = 'CONFIRMED';
+                        triggerGoodAction();
+                        goodGestureStartTime = performance.now();
+                    }
+                }
+            } else {
+                isHoldingGood = false;
+                progressRing.style.strokeDashoffset = circumference;
+                gestureLabel.innerText = 'NONE';
+            }
+        }
+
+        function handleSingleHand(landmarks) {
+            const { isPinching } = detectPinch(landmarks);
+
+            if (isPinching) {
+                applyRotation(landmarks);
+                // 捏合中禁用 👍，避免誤觸發
+                // （goodGestureStartTime 無需另外重置，isHoldingGood = false 已足夠）
+                isHoldingGood = false;
+                progressRing.style.strokeDashoffset = circumference;
+                gestureLabel.innerText = 'PINCH ROTATE';
+            } else {
+                prevHandAngle = null; // 放開捏合，重置角度記錄防止下次捏住時跳轉
+                detectThumbsUp(landmarks);
+            }
+        }
+
+        function handleTwoHands(lm0, lm1) {
+            // 計算兩手捏點中心（拇指尖[4] + 食指尖[8] 的中點）
+            const c0 = {
+                x: (lm0[4].x + lm0[8].x) / 2,
+                y: (lm0[4].y + lm0[8].y) / 2
+            };
+            const c1 = {
+                x: (lm1[4].x + lm1[8].x) / 2,
+                y: (lm1[4].y + lm1[8].y) / 2
+            };
+
+            const currentSpan = Math.sqrt(
+                Math.pow(c1.x - c0.x, 2) +
+                Math.pow(c1.y - c0.y, 2)
+            );
+
+            if (prevPinchSpan !== null) {
+                const delta = currentSpan - prevPinchSpan;
+
+                // Dead zone：過濾追蹤抖動（靜止時 Δspan 通常 < 0.005）
+                if (Math.abs(delta) > CONFIG.gesture.SCALE_DEAD_ZONE) {
+                    let newScale = material.uniforms.uScale.value + delta * CONFIG.gesture.SCALE_SENSITIVITY;
+                    newScale = Math.max(CONFIG.gesture.SCALE_MIN, Math.min(CONFIG.gesture.SCALE_MAX, newScale));
+                    // scaled-delta 方式 + 0.15 lerp 提供平滑感
+                    material.uniforms.uScale.value += (newScale - material.uniforms.uScale.value) * 0.15;
+                }
+            }
+
+            prevPinchSpan = currentSpan;
+            gestureLabel.innerText = 'TWO HANDS SCALE';
+        }
+
         function onResults(results) {
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
