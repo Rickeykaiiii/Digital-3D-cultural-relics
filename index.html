@@ -794,15 +794,8 @@
                 isHoldingGood = false;
                 progressRing.style.strokeDashoffset = circumference;
                 handleOKGesture();
-            } else if (isPinching) {
-                // 普通捏合：旋轉
-                applyRotation(landmarks);
-                isHoldingOK = false;
-                isHoldingGood = false;
-                progressRing.style.strokeDashoffset = circumference;
-                gestureLabel.innerText = 'PINCH ROTATE';
             } else {
-                // 未捏合：👍 偵測
+                // 未捏合或普通捏合：👍 偵測（旋轉暫停用）
                 prevHandAngle = null;
                 isHoldingOK = false;
                 detectThumbsUp(landmarks);
@@ -830,8 +823,12 @@
 
                 // Dead zone：過濾追蹤抖動（靜止時 Δspan 通常 < 0.005）
                 if (Math.abs(delta) > CONFIG.gesture.SCALE_DEAD_ZONE) {
-                    const newScale = material.uniforms.uScale.value + delta * CONFIG.gesture.SCALE_SENSITIVITY;
-                    material.uniforms.uScale.value = Math.max(CONFIG.gesture.SCALE_MIN, Math.min(CONFIG.gesture.SCALE_MAX, newScale));
+                    const newScale = Math.max(CONFIG.gesture.SCALE_MIN, Math.min(CONFIG.gesture.SCALE_MAX,
+                        material.uniforms.uScale.value + delta * CONFIG.gesture.SCALE_SENSITIVITY
+                    ));
+                    material.uniforms.uScale.value = newScale;
+                    // 實體模式下同步縮放 solidMesh
+                    if (solidMesh) solidMesh.scale.setScalar(newScale);
                 }
             }
 
