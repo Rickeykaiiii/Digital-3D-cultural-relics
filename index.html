@@ -201,44 +201,35 @@
             </div>
 
             <!-- Gesture Cards Grid -->
-            <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="grid grid-cols-3 gap-4 mb-8">
 
                 <!-- Gesture 1: Palm Rotate -->
                 <div class="rounded-2xl p-4 text-center" style="background: rgba(6,182,212,0.05); border: 1px solid rgba(6,182,212,0.15);">
-                    <div class="flex items-center justify-center mb-3" style="height: 64px;">
-                        <span style="font-size: 48px; line-height: 1;">✋</span>
+                    <div class="flex items-center justify-center mb-3" style="height: 72px;">
+                        <span style="font-size: 52px; line-height: 1;">✋</span>
                     </div>
                     <p class="text-xs tech-font text-cyan-400 mb-1 tracking-wider">PALM ROTATE</p>
-                    <p class="text-xs text-slate-400 leading-relaxed">單手入鏡<br>轉動手掌角度<br>旋轉文物 Y 軸</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">單手張開<br>轉動手掌角度<br>旋轉文物</p>
                 </div>
 
                 <!-- Gesture 2: Two Hands Scale -->
                 <div class="rounded-2xl p-4 text-center" style="background: rgba(6,182,212,0.05); border: 1px solid rgba(6,182,212,0.15);">
-                    <div class="flex items-center justify-center mb-3 gap-1" style="height: 64px;">
-                        <span style="font-size: 32px; line-height: 1;">🤚</span>
-                        <span style="font-size: 14px; color: rgba(251,191,36,0.8);">↔</span>
-                        <span style="font-size: 32px; line-height: 1; transform: scaleX(-1); display: inline-block;">🤚</span>
+                    <div class="flex items-center justify-center mb-3 gap-1" style="height: 72px;">
+                        <span style="font-size: 36px; line-height: 1;">🤚</span>
+                        <span style="font-size: 16px; color: rgba(251,191,36,0.8);">↔</span>
+                        <span style="font-size: 36px; line-height: 1; transform: scaleX(-1); display: inline-block;">🤚</span>
                     </div>
                     <p class="text-xs tech-font text-cyan-400 mb-1 tracking-wider">TWO HANDS SCALE</p>
-                    <p class="text-xs text-slate-400 leading-relaxed">雙手同時入鏡<br>拉開 / 靠近<br>縮放文物大小</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">雙手入鏡<br>拉開靠近<br>縮放文物</p>
                 </div>
 
-                <!-- Gesture 3: OK Mode Switch -->
-                <div class="rounded-2xl p-4 text-center" style="background: rgba(251,191,36,0.04); border: 1px solid rgba(251,191,36,0.15);">
-                    <div class="flex items-center justify-center mb-3" style="height: 64px;">
-                        <span style="font-size: 48px; line-height: 1;">👌</span>
-                    </div>
-                    <p class="text-xs tech-font text-yellow-400 mb-1 tracking-wider">MODE SWITCH</p>
-                    <p class="text-xs text-slate-400 leading-relaxed">單手 OK 手勢<br>持續 2 秒<br>切換粒子 / 實體材質</p>
-                </div>
-
-                <!-- Gesture 4: Thumbs Up -->
+                <!-- Gesture 3: Thumbs Up -->
                 <div class="rounded-2xl p-4 text-center" style="background: rgba(6,182,212,0.05); border: 1px solid rgba(6,182,212,0.15);">
-                    <div class="flex items-center justify-center mb-3" style="height: 64px;">
-                        <span style="font-size: 48px; line-height: 1;">👍</span>
+                    <div class="flex items-center justify-center mb-3" style="height: 72px;">
+                        <span style="font-size: 52px; line-height: 1;">👍</span>
                     </div>
-                    <p class="text-xs tech-font text-cyan-400 mb-1 tracking-wider">SWITCH MODEL</p>
-                    <p class="text-xs text-slate-400 leading-relaxed">單手豎大拇指<br>持續 1.5 秒<br>切換立人像 + AI 解說</p>
+                    <p class="text-xs tech-font text-cyan-400 mb-1 tracking-wider">AI ANALYSIS</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">單手豎大拇指<br>持續 1.5 秒<br>觸發 AI 解說</p>
                 </div>
             </div>
 
@@ -261,14 +252,8 @@
     <!-- Loading Screen -->
     <div id="loading-overlay" class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center text-center">
         <div class="w-16 h-16 border-4 border-cyan-900 border-t-yellow-500 rounded-full animate-spin mb-4"></div>
-        <h2 id="loading-title" class="text-xl text-cyan-500 tracking-widest tech-font">INITIALIZING SYSTEM</h2>
-        <p id="loading-text" class="text-sm text-slate-500 mt-2">Connecting to Neural Interface...</p>
-        <div id="loading-progress" class="hidden mt-4 w-64">
-            <div class="h-1 bg-slate-800 rounded-full overflow-hidden">
-                <div id="progress-bar" class="h-full bg-cyan-500 transition-all duration-300" style="width: 0%"></div>
-            </div>
-            <p id="progress-text" class="text-xs text-slate-600 mt-2">0%</p>
-        </div>
+        <h2 class="text-xl text-cyan-500 tracking-widest tech-font">INITIALIZING SYSTEM</h2>
+        <p class="text-sm text-slate-500 mt-2">Connecting to Neural Interface...</p>
     </div>
 
     <!-- Scripts -->
@@ -521,62 +506,6 @@
         // --- Logic: OBJ Loading ---
         const objLoader = new OBJLoader();
         const objInput = document.getElementById('obj-input');
-
-        async function loadOBJWithProgress(url, filename) {
-            const loadingOverlay = document.getElementById('loading-overlay');
-            const loadingTitle = document.getElementById('loading-title');
-            const loadingText = document.getElementById('loading-text');
-            const loadingProgress = document.getElementById('loading-progress');
-            const progressBar = document.getElementById('progress-bar');
-            const progressText = document.getElementById('progress-text');
-
-            loadingOverlay.style.display = 'flex';
-            loadingOverlay.style.opacity = '1';
-            loadingTitle.innerText = 'LOADING MODEL';
-            loadingText.innerText = `Downloading ${filename}...`;
-            loadingProgress.classList.remove('hidden');
-
-            const response = await fetch(url);
-            const reader = response.body.getReader();
-            const contentLength = +response.headers.get('Content-Length');
-            let receivedLength = 0;
-            let chunks = [];
-
-            while(true) {
-                const {done, value} = await reader.read();
-                if (done) break;
-                chunks.push(value);
-                receivedLength += value.length;
-                const progress = Math.round((receivedLength / contentLength) * 100);
-                progressBar.style.width = progress + '%';
-                progressText.innerText = progress + '%';
-            }
-
-            const blob = new Blob(chunks);
-            const text = await blob.text();
-
-            loadingTitle.innerText = 'PARSING MODEL';
-            loadingText.innerText = 'Processing geometry...';
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            const object = objLoader.parse(text);
-            let mesh = null;
-            object.traverse(child => {
-                if (child.isMesh) mesh = child;
-            });
-
-            if (mesh) {
-                processMeshToParticles(mesh);
-                updateAIDescription(filename);
-            }
-
-            loadingOverlay.style.opacity = '0';
-            setTimeout(() => {
-                loadingOverlay.style.display = 'none';
-                loadingProgress.classList.add('hidden');
-                progressBar.style.width = '0%';
-            }, 500);
-        }
 
         objInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -951,12 +880,14 @@
         }
 
         function triggerGoodAction() {
-            material.uniforms.uMorphFactor.value = 0.5;
-            loadOBJWithProgress('assets/objs/standing-man.obj', 'standing-man.obj')
-                .catch(err => {
-                    console.error('Failed to load standing-man.obj:', err);
-                    updateAIDescription("深度扫描 - 重新校准");
-                });
+            // Visual feedback
+            material.uniforms.uMorphFactor.value = 0.5; // Brief flash to chaos
+            setTimeout(() => {
+                animateMorph(1.0);
+            }, 300);
+
+            // Re-generate description for current item as a "Refined Scan"
+            updateAIDescription("深度扫描 - 重新校准");
         }
 
         const hands = new Hands({
@@ -1009,20 +940,31 @@
         }
 
         // --- Init ---
-        // Load model after 1.5s, then show gesture guide
+        // Hide loading screen after 1.5s, then show gesture guide
         setTimeout(() => {
-            loadOBJWithProgress('assets/objs/standing-man.obj', 'standing-man.obj')
-                .then(() => {
-                    // Show gesture guide after loading
-                    const overlay = document.getElementById('gesture-guide-overlay');
-                    overlay.style.opacity = '0';
-                    overlay.style.transition = 'opacity 0.5s ease';
-                    overlay.style.display = 'flex';
-                    requestAnimationFrame(() => { overlay.style.opacity = '1'; });
-                })
-                .catch(() => {
-                    generateTorusKnotPoints();
-                });
+            document.getElementById('loading-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
+                // Auto-load standing-man.obj as default model
+                fetch('assets/objs/standing-man.obj')
+                    .then(r => r.text())
+                    .then(text => {
+                        const object = objLoader.parse(text);
+                        object.traverse(child => {
+                            if (child.isMesh) {
+                                processMeshToParticles(child);
+                                updateAIDescription('standing-man.obj');
+                            }
+                        });
+                    })
+                    .catch(() => generateTorusKnotPoints()); // fallback if file missing
+                // Show gesture guide after loading
+                const overlay = document.getElementById('gesture-guide-overlay');
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.5s ease';
+                overlay.style.display = 'flex';
+                requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+            }, 500);
         }, 1500);
 
         // Gesture Guide open/close logic
