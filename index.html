@@ -237,8 +237,8 @@
                     <div class="flex items-center justify-center mb-3" style="height: 64px;">
                         <span style="font-size: 48px; line-height: 1;">👍</span>
                     </div>
-                    <p class="text-xs tech-font text-cyan-400 mb-1 tracking-wider">AI ANALYSIS</p>
-                    <p class="text-xs text-slate-400 leading-relaxed">單手豎大拇指<br>持續 1.5 秒<br>觸發 AI 考古解說</p>
+                    <p class="text-xs tech-font text-cyan-400 mb-1 tracking-wider">SWITCH MODEL</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">單手豎大拇指<br>持續 1.5 秒<br>切換立人像 + AI 解說</p>
                 </div>
             </div>
 
@@ -891,12 +891,23 @@
         function triggerGoodAction() {
             // Visual feedback
             material.uniforms.uMorphFactor.value = 0.5; // Brief flash to chaos
-            setTimeout(() => {
-                animateMorph(1.0);
-            }, 300);
 
-            // Re-generate description for current item as a "Refined Scan"
-            updateAIDescription("深度扫描 - 重新校准");
+            // Load standing-man.obj
+            fetch('assets/objs/standing-man.obj')
+                .then(r => r.text())
+                .then(text => {
+                    const object = objLoader.parse(text);
+                    object.traverse(child => {
+                        if (child.isMesh) {
+                            processMeshToParticles(child);
+                            updateAIDescription('standing-man.obj');
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to load standing-man.obj:', err);
+                    updateAIDescription("深度扫描 - 重新校准");
+                });
         }
 
         const hands = new Hands({
@@ -955,14 +966,14 @@
             setTimeout(() => {
                 document.getElementById('loading-overlay').style.display = 'none';
                 // Auto-load mask.obj as default model
-                fetch('assets/objs/mask.obj')
+                fetch('assets/objs/standing-man.obj')
                     .then(r => r.text())
                     .then(text => {
                         const object = objLoader.parse(text);
                         object.traverse(child => {
                             if (child.isMesh) {
                                 processMeshToParticles(child);
-                                updateAIDescription('mask.obj');
+                                updateAIDescription('standing-man.obj');
                             }
                         });
                     })
