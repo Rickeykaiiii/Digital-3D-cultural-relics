@@ -670,15 +670,14 @@
 
                 // Dead zone：過濾追蹤抖動（靜止時 Δspan 通常 < 0.005）
                 if (Math.abs(delta) > CONFIG.gesture.SCALE_DEAD_ZONE) {
-                    let newScale = material.uniforms.uScale.value + delta * CONFIG.gesture.SCALE_SENSITIVITY;
-                    newScale = Math.max(CONFIG.gesture.SCALE_MIN, Math.min(CONFIG.gesture.SCALE_MAX, newScale));
-                    // scaled-delta 方式 + 0.15 lerp 提供平滑感
-                    material.uniforms.uScale.value += (newScale - material.uniforms.uScale.value) * 0.15;
+                    const newScale = material.uniforms.uScale.value + delta * CONFIG.gesture.SCALE_SENSITIVITY;
+                    material.uniforms.uScale.value = Math.max(CONFIG.gesture.SCALE_MIN, Math.min(CONFIG.gesture.SCALE_MAX, newScale));
                 }
             }
 
             prevPinchSpan = currentSpan;
-            gestureLabel.innerText = 'TWO HANDS SCALE';
+            // Debug: 顯示即時 span 值，確認後可移除
+            gestureLabel.innerText = `TWO HANDS span:${currentSpan.toFixed(3)} scale:${material.uniforms.uScale.value.toFixed(2)}`;
         }
 
         function onResults(results) {
