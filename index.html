@@ -649,7 +649,10 @@
                 let delta = currentAngle - prevHandAngle;
                 if (delta > Math.PI)  delta -= 2 * Math.PI;
                 if (delta < -Math.PI) delta += 2 * Math.PI;
-                particleSystem.rotation.y += delta * CONFIG.gesture.ROTATION_SENSITIVITY;
+                // Dead zone：過濾 MediaPipe 追蹤抖動，靜止時不漂移
+                if (Math.abs(delta) > 0.015) {
+                    particleSystem.rotation.y += delta * CONFIG.gesture.ROTATION_SENSITIVITY;
+                }
             }
             prevHandAngle = currentAngle;
         }
@@ -862,7 +865,7 @@
             setTimeout(() => {
                 document.getElementById('loading-overlay').style.display = 'none';
                 // Auto-load mask.obj as default model
-                fetch('models/mask.obj')
+                fetch('assets/objs/mask.obj')
                     .then(r => r.text())
                     .then(text => {
                         const object = objLoader.parse(text);
