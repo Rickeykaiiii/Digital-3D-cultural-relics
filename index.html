@@ -202,7 +202,15 @@
                 gold: new THREE.Color('#fbbf24'),
                 dark: new THREE.Color('#000000')
             },
-            cameraZ: 150
+            cameraZ: 150,
+            gesture: {
+                PINCH_THRESHOLD: 0.07,      // normalized，拇指食指捏合判定距離
+                ROTATION_SENSITIVITY: 2.5,  // 旋轉倍率
+                SCALE_SENSITIVITY: 2.0,     // 雙手縮放倍率（delta-based）
+                SCALE_DEAD_ZONE: 0.008,     // 最小有效間距變化量，過濾追蹤抖動
+                SCALE_MIN: 0.3,
+                SCALE_MAX: 4.0,
+            }
         };
 
         // --- Gemini API Setup ---
@@ -669,7 +677,7 @@
         });
 
         hands.setOptions({
-            maxNumHands: 1,
+            maxNumHands: 2,
             modelComplexity: 1,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5
