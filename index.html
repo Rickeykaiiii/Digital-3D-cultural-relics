@@ -889,15 +889,12 @@
             const allLandmarks = results.multiHandLandmarks ?? [];
 
             if (allLandmarks.length >= 2) {
-                // 雙手：繪製骨架 + 縮放
+                // 雙手：暫時停用，當作單手處理
                 drawConnectors(canvasCtx, allLandmarks[0], HAND_CONNECTIONS, { color: '#06b6d4', lineWidth: 2 });
                 drawLandmarks(canvasCtx, allLandmarks[0], { color: '#fbbf24', lineWidth: 1, radius: 3 });
-                drawConnectors(canvasCtx, allLandmarks[1], HAND_CONNECTIONS, { color: '#06b6d4', lineWidth: 2 });
-                drawLandmarks(canvasCtx, allLandmarks[1], { color: '#fbbf24', lineWidth: 1, radius: 3 });
 
-                handleTwoHands(allLandmarks[0], allLandmarks[1]);
-                prevHandOpenness = null;        // 切換至雙手，重置單手縮放狀態
-                isHoldingOK = false;
+                handleSingleHand(allLandmarks[0]);
+                prevPinchSpan = null;
                 controls.autoRotate = false;
 
             } else if (allLandmarks.length === 1) {
