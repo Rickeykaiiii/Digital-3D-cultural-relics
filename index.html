@@ -564,6 +564,12 @@
                 emissive: new THREE.Color('#3d2a10'),
                 emissiveIntensity: 0.3,
             });
+            // 如果使用 MTL 材質，增強其亮度和自發光
+            if (useMaterial) {
+                solidMat.emissive = new THREE.Color('#4a3520');
+                solidMat.emissiveIntensity = 0.6;
+                solidMat.color.multiplyScalar(1.5); // 增亮漫反射顏色
+            }
             solidMesh = new THREE.Mesh(mesh.geometry.clone(), solidMat);
             solidMesh.visible = false;
             scene.add(solidMesh);
