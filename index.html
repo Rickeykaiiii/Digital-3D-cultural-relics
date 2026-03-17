@@ -608,9 +608,18 @@
             update();
         }
 
+        // Typewriter timer
+        let typewriterTimer = null;
+
         async function updateAIDescription(name) {
             const aiContent = document.getElementById('ai-content');
             const loading = document.getElementById('ai-loading');
+
+            // 停止之前的打字機效果
+            if (typewriterTimer) {
+                clearTimeout(typewriterTimer);
+                typewriterTimer = null;
+            }
 
             loading.classList.remove('hidden');
             aiContent.innerHTML = `<p class="italic text-slate-500">正在分析文物结构数据 [${name}]...</p>`;
@@ -632,9 +641,11 @@
                         aiContent.innerHTML += char;
                     }
                     i++;
-                    setTimeout(typeWriter, speed);
+                    typewriterTimer = setTimeout(typeWriter, speed);
                     // Scroll to bottom
                     aiContent.scrollTop = aiContent.scrollHeight;
+                } else {
+                    typewriterTimer = null;
                 }
             }
             typeWriter();
