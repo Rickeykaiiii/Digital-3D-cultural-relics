@@ -253,7 +253,7 @@
     <div id="loading-overlay" class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center text-center">
         <div class="w-16 h-16 border-4 border-cyan-900 border-t-yellow-500 rounded-full animate-spin mb-4"></div>
         <h2 class="text-xl text-cyan-500 tracking-widest tech-font">INITIALIZING SYSTEM</h2>
-        <p class="text-sm text-slate-500 mt-2">Connecting to Neural Interface...</p>
+        <p id="loading-text" class="text-sm text-slate-500 mt-2">正在加载文物数据...</p>
     </div>
 
     <!-- Scripts -->
@@ -288,6 +288,9 @@
             }
         };
 
+        // --- Preload Cache ---
+        const modelCache = {};
+
         // --- Gemini API Setup ---
         async function getArtifactDescription(modelName) {
             try {
@@ -300,37 +303,72 @@
             }
         }
 
+        async function preloadAllModels(modelNames) {
+            const loadingText = document.getElementById('loading-text');
+            const totalModels = modelNames.length;
+            let loadedCount = 0;
+
+            for (const modelName of modelNames) {
+                loadingText.textContent = `正在加载文物数据 ${loadedCount + 1}/${totalModels}...`;
+
+                try {
+                    // Load description
+                    const description = await getArtifactDescription(modelName);
+
+                    // Load MTL
+                    const mtlLoader = new MTLLoader();
+                    mtlLoader.setPath(`assets/texture/${modelName}/`);
+                    let materials = null;
+
+                    try {
+                        materials = await new Promise((resolve, reject) => {
+                            mtlLoader.load('material.mtl', resolve, undefined, reject);
+                        });
+                        materials.preload();
+                    } catch (e) {
+                        console.warn(`MTL load failed for ${modelName}, will use default material`);
+                    }
+
+                    // Load OBJ
+                    const objResponse = await fetch(`assets/objs/${modelName}.obj`);
+                    const objText = await objResponse.text();
+
+                    // Cache everything
+                    modelCache[modelName] = {
+                        objText,
+                        materials,
+                        description
+                    };
+
+                    loadedCount++;
+                } catch (error) {
+                    console.error(`Failed to preload ${modelName}:`, error);
+                }
+            }
+
+            loadingText.textContent = '加载完成';
+        }
+
         function loadModel(modelName) {
-            const mtlLoader = new MTLLoader();
-            mtlLoader.setPath(`assets/texture/${modelName}/`);
-            mtlLoader.load('material.mtl', (materials) => {
-                materials.preload();
-                objLoader.setMaterials(materials);
-                fetch(`assets/objs/${modelName}.obj`)
-                    .then(r => r.text())
-                    .then(text => {
-                        const object = objLoader.parse(text);
-                        object.traverse(child => {
-                            if (child.isMesh) {
-                                processMeshToParticles(child, child.material);
-                                updateAIDescription(modelName);
-                            }
-                        });
-                    });
-            }, undefined, () => {
-                // MTL load failed, fallback to OBJ only
-                fetch(`assets/objs/${modelName}.obj`)
-                    .then(r => r.text())
-                    .then(text => {
-                        const object = objLoader.parse(text);
-                        object.traverse(child => {
-                            if (child.isMesh) {
-                                processMeshToParticles(child);
-                                updateAIDescription(modelName);
-                            }
-                        });
-                    })
-                    .catch(() => generateTorusKnotPoints());
+            const cached = modelCache[modelName];
+
+            if (!cached) {
+                console.error(`Model ${modelName} not in cache`);
+                generateTorusKnotPoints();
+                return;
+            }
+
+            const objLoader = new OBJLoader();
+            if (cached.materials) {
+                objLoader.setMaterials(cached.materials);
+            }
+
+            const object = objLoader.parse(cached.objText);
+            object.traverse(child => {
+                if (child.isMesh) {
+                    processMeshToParticles(child, child.material);
+                    updateAIDescription(modelName);
+                }
             });
         }
 
@@ -624,7 +662,9 @@
             loading.classList.remove('hidden');
             aiContent.innerHTML = `<p class="italic text-slate-500">正在分析文物结构数据 [${name}]...</p>`;
 
-            const desc = await getArtifactDescription(name);
+            // Use cached description
+            const cached = modelCache[name];
+            const desc = cached ? cached.description : await getArtifactDescription(name);
 
             // Typewriter effect
             aiContent.innerHTML = '';
@@ -996,12 +1036,14 @@
         }
 
         // --- Init ---
-        // Hide loading screen after 1.5s, then show gesture guide
-        setTimeout(() => {
+        // Preload all models, then show page
+        (async function init() {
+            await preloadAllModels(models);
+
             document.getElementById('loading-overlay').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('loading-overlay').style.display = 'none';
-                // Auto-load default model
+                // Auto-load default model from cache
                 loadModel(currentModel);
                 // Show gesture guide after loading
                 const overlay = document.getElementById('gesture-guide-overlay');
@@ -1010,7 +1052,7 @@
                 overlay.style.display = 'flex';
                 requestAnimationFrame(() => { overlay.style.opacity = '1'; });
             }, 500);
-        }, 1500);
+        })();
 
         // Gesture Guide open/close logic
         document.getElementById('gesture-guide-close').addEventListener('click', () => {
