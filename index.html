@@ -979,6 +979,17 @@
         }
 
         function triggerGoodAction() {
+            // 如果在實體模式，先切回粒子模式
+            if (!isParticleMode && solidMesh) {
+                particleSystem.visible = true;
+                solidMesh.visible = false;
+                isParticleMode = true;
+                // 恢復粒子模式光照
+                ambientLight.intensity = 1.5;
+                keyLight.intensity = 3.0;
+                fillLight.intensity = 1.0;
+            }
+
             // Switch to next model
             const currentIndex = models.indexOf(currentModel);
             const nextIndex = (currentIndex + 1) % models.length;
