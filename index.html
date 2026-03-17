@@ -304,10 +304,12 @@
 
             for (const modelName of modelNames) {
                 loadingText.textContent = `正在加载文物数据 ${loadedCount + 1}/${totalModels}...`;
+                console.log(`[Preload] Starting ${modelName}...`);
 
                 try {
                     // Load description
                     const description = await getArtifactDescription(modelName);
+                    console.log(`[Preload] ${modelName} description loaded`);
 
                     // Load MTL
                     const mtlLoader = new MTLLoader();
@@ -319,13 +321,19 @@
                             mtlLoader.load('material.mtl', resolve, undefined, reject);
                         });
                         materials.preload();
+                        console.log(`[Preload] ${modelName} MTL loaded`);
                     } catch (e) {
-                        console.warn(`MTL load failed for ${modelName}, will use default material`);
+                        console.warn(`[Preload] MTL load failed for ${modelName}, will use default material`, e);
                     }
 
                     // Load OBJ
+                    console.log(`[Preload] Loading ${modelName}.obj...`);
                     const objResponse = await fetch(`assets/objs/${modelName}.obj`);
+                    if (!objResponse.ok) {
+                        throw new Error(`HTTP ${objResponse.status}: ${objResponse.statusText}`);
+                    }
                     const objText = await objResponse.text();
+                    console.log(`[Preload] ${modelName}.obj loaded, size: ${(objText.length / 1024 / 1024).toFixed(2)}MB`);
 
                     // Cache everything
                     modelCache[modelName] = {
@@ -335,11 +343,13 @@
                     };
 
                     loadedCount++;
+                    console.log(`[Preload] ${modelName} cached successfully (${loadedCount}/${totalModels})`);
                 } catch (error) {
-                    console.error(`Failed to preload ${modelName}:`, error);
+                    console.error(`[Preload] Failed to preload ${modelName}:`, error);
                 }
             }
 
+            console.log('[Preload] All models loaded. Cache:', Object.keys(modelCache));
             loadingText.textContent = '加载完成';
         }
 
