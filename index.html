@@ -358,12 +358,13 @@
                 return;
             }
 
-            const objLoader = new OBJLoader();
+            // Create a new loader instance for this load
+            const loader = new OBJLoader();
             if (cached.materials) {
-                objLoader.setMaterials(cached.materials);
+                loader.setMaterials(cached.materials);
             }
 
-            const object = objLoader.parse(cached.objText);
+            const object = loader.parse(cached.objText);
             object.traverse(child => {
                 if (child.isMesh) {
                     processMeshToParticles(child, child.material);
