@@ -138,16 +138,24 @@
         </div>
 
         <!-- AI Description Panel -->
-        <div class="glass-panel p-4 md:p-6 rounded-2xl pointer-events-auto h-48 md:h-96 flex flex-col">
+        <div id="description-panel" class="glass-panel p-4 md:p-6 rounded-2xl pointer-events-auto h-48 md:h-96 flex flex-col transition-all duration-300">
             <div class="flex justify-between items-center mb-2 md:mb-3">
                 <h2 class="text-base md:text-lg font-bold text-cyan-400">文物簡介</h2>
-                <svg class="w-4 h-4 md:w-5 md:h-5 text-yellow-500 animate-spin hidden" id="ai-loading" fill="none"
-                    viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                    </path>
-                </svg>
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 md:w-5 md:h-5 text-yellow-500 animate-spin hidden" id="ai-loading" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
+                    <!-- Toggle button for mobile -->
+                    <button id="description-toggle" class="md:hidden w-6 h-6 flex items-center justify-center rounded-full hover:bg-cyan-500/20 transition-colors">
+                        <svg id="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(6,182,212,0.9)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="18 15 12 9 6 15"></polyline>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div id="ai-content" class="text-xs md:text-sm leading-relaxed text-slate-300 overflow-y-auto pr-2 h-full font-light">
                 <p class="italic text-slate-500">正在等待文物数据加载...</p>
@@ -1087,6 +1095,28 @@
                 const overlay = document.getElementById('gesture-guide-overlay');
                 overlay.style.opacity = '0';
                 setTimeout(() => { overlay.style.display = 'none'; }, 400);
+            }
+        });
+
+        // Description panel toggle for mobile
+        let isDescriptionCollapsed = false;
+        document.getElementById('description-toggle').addEventListener('click', () => {
+            const panel = document.getElementById('description-panel');
+            const content = document.getElementById('ai-content');
+            const icon = document.getElementById('toggle-icon');
+
+            isDescriptionCollapsed = !isDescriptionCollapsed;
+
+            if (isDescriptionCollapsed) {
+                // 收起
+                panel.style.height = 'auto';
+                content.style.display = 'none';
+                icon.innerHTML = '<polyline points="6 9 12 15 18 9"></polyline>';
+            } else {
+                // 展開
+                panel.style.height = '12rem'; // h-48
+                content.style.display = 'block';
+                icon.innerHTML = '<polyline points="18 15 12 9 6 15"></polyline>';
             }
         });
 
